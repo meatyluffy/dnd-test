@@ -661,6 +661,10 @@
         duration: o.dur || 450, ease: o.ease || 'Cubic.out', delay: o.delay || 0, onComplete: () => sp.destroy() });
       return sp;
     }
+    screenTint(color, a, dur) {
+      const r = this.add.rectangle(0, 0, G.W, G.H, color, a).setOrigin(0).setScrollFactor(0).setDepth(5900).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: r, alpha: 0, duration: dur, onComplete: () => r.destroy() });
+    }
     light(x, y, color, size = 4, dur = 400, a = 0.6) {
       const g = this.add.image(x, y, 'dot').setTint(color).setScale(size).setAlpha(a).setBlendMode(Phaser.BlendModes.ADD).setDepth(y - 3);
       this.tweens.add({ targets: g, alpha: 0, scale: size * 1.4, duration: dur, onComplete: () => g.destroy() });
@@ -759,7 +763,7 @@
           this.sprite('fx_hellfire', e.x + 30, e.y - 20, { s0: 0.1, s1: 0.5, a0: 1, dur: 900, delay: 100, dy: -50, origin: [0.5, 0.9], depth: e.y + 6 });
           this.emitAt(e.x, e.y - 80, 'dot', [0xff6a1a, 0xffc04a, 0x6bff4a], 40, { speed: { min: 60, max: 240 }, gravityY: -260, scale: { start: 2.2, end: 0 }, lifespan: 800 });
           this.light(e.x, e.y - 30, 0xff8a2a, 8, 700, 0.8);
-          this.cameras.main.flash(120, 255, 140, 40, false);
+          this.screenTint(0xff8a2a, 0.22, 220);
           this.cameras.main.shake(180, 0.01);
           break;
         case 'darkness': break;
