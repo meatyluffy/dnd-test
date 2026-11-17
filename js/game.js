@@ -7,7 +7,7 @@
   const FONT = '"Cyrillic Pixel-7", monospace';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const fz = (n) => Math.max(10, Math.round(n * 1.2));
-  const T = (sc, x, y, s, size = 12, color = '#f1e6cf', o = {}) => sc.add.text(x, y, s, Object.assign({ fontFamily: FONT, fontSize: fz(size), color, resolution: 3, stroke: '#0a0610', strokeThickness: o.stroke !== undefined ? o.stroke : 3, wordWrap: o.wrap ? { width: o.wrap } : undefined, lineSpacing: 2 }, o.style || {}));
+  const T = (sc, x, y, s, size = 12, color = '#f1e6cf', o = {}) => sc.add.text(x, y, s, Object.assign({ fontFamily: FONT, fontSize: fz(size), color, resolution: Math.max(3, Math.ceil((S.zoom || 2) * 1.5)), stroke: '#0a0610', strokeThickness: o.stroke !== undefined ? o.stroke : 3, wordWrap: o.wrap ? { width: o.wrap } : undefined, lineSpacing: 2 }, o.style || {}));
 
   // ------------------------------------------------------------ shared state
   const S = window.S = {
@@ -316,6 +316,7 @@
     }
     // menu navigation with auto-repeat
     nav(act, dt) {
+      if (this.pressed(act)) { this.repeat[act] = 0.32; return true; }
       const d = this.down(act);
       if (!d) { this.repeat[act] = 0; return false; }
       if (!this.repeat[act]) { this.repeat[act] = 0.32; return true; }
@@ -333,7 +334,7 @@
     document.getElementById('game').style.display = 'block';
     new Phaser.Game({
       type: Phaser.WEBGL, parent: 'game', width: W, height: H, pixelArt: true, roundPixels: true, backgroundColor: '#05030a',
-      scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+      scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
       input: { gamepad: true },
       render: { preserveDrawingBuffer: params.has('test') },
       scene: [Boot, Explore, BattleScene, UIScene],
@@ -342,12 +343,26 @@
 
   function heroKey(char) { return 'spr_' + char; }
 
+  // integer-free fit: the whole 640x360 world is zoomed into the real canvas, so text is rendered at screen resolution
+  function fitCam(scene) {
+    const apply = () => {
+      const w = scene.scale.width, h = scene.scale.height;
+      const z = Math.min(w / W, h / H);
+      S.zoom = z;
+      for (const cam of scene.cameras.cameras) { cam.setZoom(z); cam.centerOn(W / 2, H / 2); }
+    };
+    apply();
+    scene.scale.on('resize', apply);
+    scene.events.once('shutdown', () => scene.scale.off('resize', apply));
+  }
+
   class Boot extends Phaser.Scene {
     constructor() { super('boot'); }
     preload() {
-      const t = this.add.text(W / 2, H / 2, 'Спуск в Подземье…', { fontFamily: FONT, fontSize: 16, color: '#e8c27a', resolution: 3 }).setOrigin(0.5);
+      const t = this.add.text(W / 2, H / 2, 'Спуск в Подземье…', { fontFamily: FONT, fontSize: 16, color: '#e8c27a', resolution: 4 }).setOrigin(0.5);
       this.load.on('progress', v => t.setText('Спуск в Подземье… ' + Math.round(v * 100) + '%'));
       window.loadAssets(this);
+      fitCam(this);
     }
     create() {
       // slice sprite strips into frames
@@ -371,9 +386,7 @@
   // ------------------------------------------------------------ HD-2D look helpers
   function hd2d(cam, strong) {
     if (!cam.postFX || params.has('nofx')) return;
-    cam.postFX.addTiltShift(strong ? 0.35 : 0.25, 1.2, 0, 0.5, 0.5, 1.0);
-    cam.postFX.addBloom(0xffffff, 1, 1, 0.8, 1.05);
-    cam.postFX.addVignette(0.5, 0.52, 0.86, 0.38);
+    cam.postFX.addVignette(0.5, 0.5, 0.95, 0.25);
   }
   function addLights(sc, lights, depth = 50) {
     const objs = [];
@@ -402,6 +415,7 @@
     constructor() { super('explore'); }
     create() {
       S.explore = this;
+      fitCam(this);
       this.inp = new Input(this);
       this.vis = new Map();
       this.foeVis = [];
@@ -446,7 +460,7 @@
         const kind = f.boss ? 'ilvara' : f.group[0];
         const spr = this.add.sprite(f.x, f.y, 'spr_' + kind, 0).setOrigin(0.5, 1).setDepth(f.y);
         const sh = this.add.image(f.x, f.y, 'shadow').setDepth(f.y - 1);
-        const mark = this.add.text(f.x, f.y - spr.height - 4, f.boss ? '☠' : '!', { fontFamily: FONT, fontSize: 12, color: f.boss ? '#ff6a8a' : '#ffd36b', resolution: 3, stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 1).setDepth(900);
+        const mark = this.add.text(f.x, f.y - spr.height - 4, f.boss ? '☠' : '!', { fontFamily: FONT, fontSize: 12, color: f.boss ? '#ff6a8a' : '#ffd36b', resolution: 4, stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 1).setDepth(900);
         this.foeVis.push({ f, spr, sh, mark, kind });
       }
       // exit arrow
@@ -474,6 +488,8 @@
       this.time.delayedCall(300, () => {
         this.scene.pause();
         this.scene.setVisible(false);
+        if (this.scene.isActive('battle') || this.scene.isPaused('battle')) this.scene.stop('battle');
+        if (S.activeMenu) S.activeMenu.destroy();
         this.scene.launch('battle', m);
         this.scene.bringToTop('ui');
       });
@@ -500,7 +516,10 @@
         L.anim = x || y ? 'walk' : 'idle';
         L.t += dt;
         Object.assign(me, { x: L.x, y: L.y, face: L.face, anim: L.anim });
-        if (!busy && w.mode === 'explore' && (this.inp.pressed('ok') || S.testOk)) { S.testOk = false; this.tryInteract(); }
+        // always consume the key press, so the press that closes a dialog can't immediately reopen it
+        const okPressed = this.inp.pressed('ok');
+        const cooled = !S.ui || (performance.now() - (S.ui.closedAt || 0)) > 350;
+        if (!busy && cooled && w.mode === 'explore' && okPressed) this.tryInteract();
         if (w.mode === 'explore' && A.next && L.x > W - 10) { if (!this.exitReq) { this.exitReq = true; send({ t: 'exit' }); this.time.delayedCall(1500, () => this.exitReq = false); } }
         this.sendT += dt;
         if (!S.isHost && this.sendT > 1 / 15) { this.sendT = 0; S.net.toHost({ t: 'st', x: Math.round(L.x), y: Math.round(L.y), f: L.face, a: L.anim }); }
@@ -536,10 +555,18 @@
     nearest() {
       const A = D.AREAS[S.world.area], L = this.local; if (!L) return null;
       for (const c of A.chests) if (!S.world.opened[c.id] && Math.abs(c.x - L.x) < 26 && Math.abs(c.y - L.y) < 22) return { id: c.id, label: 'Открыть' };
-      for (const n of A.notes) if (Math.abs(n.x - L.x) < 24 && Math.abs(n.y - L.y) < 22) return { id: n.id, label: 'Осмотреть' };
+      for (const n of A.notes) {
+        const near = Math.abs(n.x - L.x) < 24 && Math.abs(n.y - L.y) < 22;
+        if (!near && this.readNote === n.id) this.readNote = null;
+        if (near && this.readNote !== n.id) return { id: n.id, label: 'Осмотреть', note: true };
+      }
       return null;
     }
-    tryInteract() { const n = this.nearest(); if (n) send({ t: 'interact', id: n.id }); }
+    tryInteract() {
+      const n = this.nearest(); if (!n) return;
+      if (n.note) this.readNote = n.id;
+      send({ t: 'interact', id: n.id });
+    }
 
     renderPlayers(dt, now) {
       const w = S.world;
@@ -580,10 +607,10 @@
     init(data) { this.init0 = data; }
     create() {
       S.battleScene = this;
+      fitCam(this);
       this.inp = new Input(this);
       const A = D.AREAS[this.init0.area];
-      this.add.image(0, 0, 'bg_' + A.bg).setOrigin(0).setTint(0x8a80a0);
-      this.add.rectangle(0, 0, W, H, 0x05020c, 0.25).setOrigin(0);
+      this.add.image(0, 0, 'bg_' + A.bg).setOrigin(0).setTint(0xc8c0d4);
       addLights(this, A.lights, 5);
       hd2d(this.cameras.main, true);
       this.view = {}; this.units = new Map();
@@ -665,7 +692,7 @@
       const s = this.snap;
       if (!s || s.phase !== 'command' || this.queue.length || this.busy > 0) return;
       const u = s.units.find(x => x.uid === s.actor);
-      if (u && u.owner === S.myPid && u.side === 'hero') this.menu = new CommandMenu(this, u);
+      if (u && u.owner === S.myPid && u.side === 'hero') { this.inp.pressed('ok'); this.inp.pressed('back'); this.menu = new CommandMenu(this, u); }
     }
 
     sendCmd(uid, cmd) {
@@ -834,6 +861,8 @@
       this.result = result;
     }
     close() {
+      if (this.menu) this.menu.destroy();
+      this.menu = null;
       S.battleScene = null;
       this.scene.stop();
       if (S.explore) S.explore.backFromBattle();
@@ -974,6 +1003,8 @@
       this.g = sc.add.graphics().setDepth(2500);
       this.texts = [];
       this.main = [['attack', 'Атака'], ['skill', 'Умения'], ['item', 'Предметы'], ['defend', 'Защита']];
+      if (S.activeMenu && S.activeMenu !== this) S.activeMenu.destroy();
+      S.activeMenu = this;
       sc.ui.focus(u.uid);
       if (S.testCmd) this.auto();
     }
@@ -982,7 +1013,12 @@
       const c = S.testCmd(this.u, this.sc.snap);
       if (c) this.sc.time.delayedCall(150, () => { this.destroy(); this.sc.sendCmd(this.u.uid, c); });
     }
-    destroy() { this.g.destroy(); this.texts.forEach(t => t.destroy()); }
+    destroy() {
+      if (this.dead) return;
+      this.dead = true;
+      this.g.destroy(); this.texts.forEach(t => t.destroy()); this.texts = [];
+      if (S.activeMenu === this) S.activeMenu = null;
+    }
     list() {
       if (this.level === 'main') return this.main;
       if (this.level === 'skill') return this.h.skills.map(k => [k, D.SKILLS[k].name, D.SKILLS[k].sp]);
@@ -999,6 +1035,7 @@
       return [];
     }
     update(dt) {
+      if (this.dead || S.activeMenu !== this) return;
       const inp = this.sc.inp;
       if (inp.pressed('bup')) this.boost = Math.min(Math.min(3, this.u.bp), this.boost + 1);
       if (inp.pressed('bdown')) this.boost = Math.max(0, this.boost - 1);
@@ -1047,16 +1084,17 @@
       g.clear(); this.texts.forEach(t => t.destroy()); this.texts = [];
       const tx = (x, y, s, size, col, o) => { const t = T(sc, x, y, s, size, col, o).setDepth(2501); this.texts.push(t); return t; };
       // header: hero + boost
-      panel(g, 6, H - 132, 200, 18);
-      tx(12, H - 129, this.u.name, 10, '#ffe3a0');
-      tx(100, H - 129, 'Усиление ' + '◆'.repeat(this.boost) + '◇'.repeat(Math.max(0, Math.min(3, this.u.bp) - this.boost)), 9, this.boost ? '#ffb43a' : '#8a7a8a');
+      const top = 70;
+      panel(g, 6, top, 200, 18);
+      tx(12, top + 2, this.u.name, 10, '#ffe3a0');
+      tx(100, top + 2, 'Усиление ' + '◆'.repeat(this.boost) + '◇'.repeat(Math.max(0, Math.min(3, this.u.bp) - this.boost)), 9, this.boost ? '#ffb43a' : '#8a7a8a');
       const L = this.level === 'target' ? this.list.call(Object.assign({}, this, { level: this.prevLevel })) : this.list();
       const lvl = this.level === 'target' ? this.prevLevel : this.level;
       const rows = lvl === 'main' ? 4 : L.length;
       const h = 8 + rows * 14;
-      panel(g, 6, H - 112, 200, h);
+      panel(g, 6, top + 20, 200, h);
       L.forEach((it, i) => {
-        const y = H - 108 + i * 14;
+        const y = top + 24 + i * 14;
         const cur = i === this.idx && this.level !== 'target';
         if (cur || (this.level === 'target' && i === this.idx)) g.fillStyle(0xe8c27a, cur ? 0.25 : 0.12).fillRect(9, y - 1, 194, 13);
         let col = '#f1e6cf';
@@ -1080,7 +1118,7 @@
         }
       }
       if (desc) { panel(g, 120, 32, 400, 30); tx(128, 36, desc, 9, '#f1e6cf', { wrap: 386 }); }
-      tx(6, H - 150, 'Подтвердить: Enter/Пробел/J · Назад: Esc/K · Усиление: E/Q (геймпад A/B, RB/LB)', 7, '#a898c0');
+      tx(8, top + 24 + h, 'Enter — выбрать · Esc — назад · E/Q — усиление', 7, '#a898c0');
     }
   }
 
@@ -1089,6 +1127,7 @@
     constructor() { super('ui'); }
     create() {
       S.ui = this;
+      fitCam(this);
       this.inp = new Input(this);
       this.g = this.add.graphics().setDepth(10);
       this.q = []; this.cur = null;
@@ -1106,6 +1145,7 @@
     nextLine() {
       this.cur = this.q.shift() || null;
       if (!this.cur) {
+        this.closedAt = performance.now();
         this.dlgName.setText(''); this.dlgText.setText(''); this.dlgHint.setText('');
         if (S.isHost) { S.dialogOpenHost = false; if (S.afterDialog) { const f = S.afterDialog; S.afterDialog = null; f(); } }
         return;

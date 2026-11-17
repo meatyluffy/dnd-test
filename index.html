@@ -10,7 +10,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: #05030a; color: #f1e6cf; font-family: 'Cyrillic Pixel-7', monospace; overflow: hidden; }
   #game { position: fixed; inset: 0; display: none; }
-  #game canvas { image-rendering: pixelated; }
+  #game canvas { image-rendering: pixelated; display: block; }
   #lobby { position: fixed; inset: 0; background: url(assets/bg/title.png) center/cover no-repeat; image-rendering: pixelated; display: flex; justify-content: center; align-items: flex-start; overflow: auto; }
   #lobby::before { content: ''; position: fixed; inset: 0; background: linear-gradient(180deg, rgba(5,3,10,.55), rgba(5,3,10,.15) 35%, rgba(5,3,10,.9)); pointer-events: none; }
   .panel { position: relative; margin: 3vh 0; width: min(900px, 94vw); text-align: center; }
