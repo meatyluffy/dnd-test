@@ -1054,7 +1054,7 @@
       if (inp.nav('down', dt)) this.idx = (this.idx + 1) % L.length;
       if (inp.pressed('back') && this.level !== 'main') { this.level = 'main'; this.idx = 0; }
       else if (inp.pressed('ok')) this.choose(L[this.idx]);
-      this.draw();
+      if (!this.dead) this.draw();
     }
     choose(item) {
       if (this.level === 'main') {
@@ -1080,6 +1080,7 @@
       this.sc.sendCmd(this.u.uid, c);
     }
     draw() {
+      if (this.dead) return; // the menu may already be closed by the command it just sent
       const g = this.g, sc = this.sc;
       g.clear(); this.texts.forEach(t => t.destroy()); this.texts = [];
       const tx = (x, y, s, size, col, o) => { const t = T(sc, x, y, s, size, col, o).setDepth(2501); this.texts.push(t); return t; };
