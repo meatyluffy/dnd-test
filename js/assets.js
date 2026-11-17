@@ -1,15 +1,10 @@
-// Asset loading shared by game and viewer.
-window.loadAllAssets = function (scene) {
+// Asset list (generated)
+window.SPRITE_META = {"lukaris": {"fw": 56, "fh": 50, "n": 12}, "soreen": {"fw": 72, "fh": 64, "n": 12}, "drow": {"fw": 75, "fh": 70, "n": 6}, "xbow": {"fw": 58, "fh": 67, "n": 6}, "quaggoth": {"fw": 83, "fh": 76, "n": 6}, "spider": {"fw": 79, "fh": 53, "n": 6}, "ilvara": {"fw": 94, "fh": 91, "n": 6}};
+window.loadAssets = function (scene) {
   const D = window.ASSET_DATA;
-  if (D) { for (const k in D) scene.load.image(k, D[k]); return; }
-  const M = window.PART_META;
-  for (const c in M) for (const p in M[c]) scene.load.image(c + '_' + p, 'assets/' + c + '/' + p + '.webp');
-  const st = ['ground', 'web_strand', 'lantern', 'stalactite', 'cobweb', 'banner', 'crates', 'mushrooms', 'barrel'];
-  for (const s of st) scene.load.image('st_' + s, 'assets/stage/' + s + '.webp');
-  scene.load.image('st_bg', 'assets/stage/bg_far.jpg');
-  for (const n of ['medallion', 'hpbar', 'bossbar', 'slot', 'plaque', 'nameplate', 'portrait_lukaris', 'portrait_soreen',
-    'icon_staff', 'icon_iceknife', 'icon_faerie', 'icon_word', 'icon_cure', 'icon_berry', 'icon_misty', 'icon_book', 'icon_eb', 'icon_frostbite', 'icon_rebuke', 'icon_backstep'])
-    scene.load.image('ui_' + n, 'assets/ui/' + n + '.webp');
-  for (const n of ['circle', 'ebolt', 'iceshard', 'iceburst', 'hellfire', 'healcol', 'motes', 'mist', 'poison', 'slash', 'spark', 'snowflake'])
-    scene.load.image('fx_' + n, 'assets/fx/' + n + '.webp');
+  const img = (key, path) => scene.load.image(key, D && D[key] ? D[key] : path);
+  for (const k in window.SPRITE_META) img('spr_' + k, 'assets/spr/' + k + '.png');
+  for (const b of ['cell', 'bridge', 'tower', 'shrine', 'title']) img('bg_' + b, 'assets/bg/' + b + '.png');
+  for (const n of ["berry", "book", "broken", "chest", "dark", "fire", "force", "ice", "light", "potion", "staff", "sword"]) img('ic_' + n, 'assets/icons/' + n + '.png');
+  for (const n of ["circle", "ebolt", "healcol", "hellfire", "iceburst", "iceshard", "mist", "motes", "poison", "slash", "snowflake", "spark"]) img('fx_' + n, 'assets/fx/' + n + '.png');
 };

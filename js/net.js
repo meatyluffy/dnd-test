@@ -1,6 +1,6 @@
 // Peer-to-peer networking over WebRTC (PeerJS). One player hosts, others join by room code.
 (function () {
-  const PREFIX = 'dnd-velkynvelve-v1-';
+  const PREFIX = 'dnd-velkynvelve-jrpg-v1-';
   const params = new URLSearchParams(location.search);
 
   function peerOptions() {
