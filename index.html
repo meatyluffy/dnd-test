@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Побег из Велкинвильва</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@500;700&family=Alegreya+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --gold:#e8c27a; --violet:#b48cff; --ink:#0d0a14; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #07050c; color: #eee; font-family: 'Alegreya Sans', sans-serif; overflow: hidden; }
+  #game { position: fixed; inset: 0; display: none; }
+  #lobby { position: fixed; inset: 0; background: url(assets/keyart.jpg) center/cover no-repeat; display: flex; align-items: flex-start; justify-content: center; }
+  #lobby::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,5,12,.55) 0%, rgba(7,5,12,.2) 35%, rgba(7,5,12,.85) 100%); }
+  .panel { position: relative; margin-top: 3vh; width: min(980px, 94vw); text-align: center; }
+  h1 { font-family: 'Cormorant SC', serif; font-size: clamp(34px, 6vw, 72px); margin: 0; color: var(--gold); letter-spacing: 2px; text-shadow: 0 3px 0 #000, 0 0 30px rgba(180,140,255,.5); }
+  .sub { font-size: 18px; color: #d8cfe8; margin: 4px 0 18px; text-shadow: 0 2px 4px #000; }
+  .box { background: rgba(13,10,20,.82); border: 1px solid rgba(232,194,122,.35); border-radius: 10px; padding: 16px 18px; backdrop-filter: blur(3px); }
+  .heroes { display: flex; gap: 14px; justify-content: center; margin: 10px 0 14px; flex-wrap: wrap; }
+  .hero { width: 300px; text-align: left; border: 2px solid transparent; border-radius: 10px; padding: 10px; background: rgba(255,255,255,.04); cursor: pointer; transition: .15s; }
+  .hero:hover { background: rgba(255,255,255,.08); }
+  .hero.sel { border-color: var(--gold); background: rgba(232,194,122,.1); }
+  .hero .top { display: flex; gap: 10px; align-items: center; }
+  .hero img { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; border: 3px solid #b8903e; box-shadow: 0 0 0 2px #2a1a40, 0 0 14px rgba(180,140,255,.5); }
+  .hero b { font-family: 'Cormorant SC', serif; font-size: 24px; color: var(--gold); }
+  .hero small { color: #b9add0; }
+  .hero ul { margin: 8px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.35; color: #ddd; }
+  .row { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  input { background: #120e1c; color: #fff; border: 1px solid #4a3d66; border-radius: 6px; padding: 9px 12px; font-size: 16px; font-family: inherit; }
+  #code { text-transform: uppercase; width: 120px; letter-spacing: 3px; text-align: center; }
+  button { background: linear-gradient(#3b2a5c, #22183a); color: #fff; border: 1px solid var(--violet); border-radius: 6px; padding: 10px 18px; font-size: 16px; font-family: inherit; cursor: pointer; }
+  button:hover { filter: brightness(1.25); }
+  button.gold { background: linear-gradient(#8a6a2e, #4e3a14); border-color: var(--gold); }
+  button:disabled { opacity: .45; cursor: default; filter: none; }
+  #status { min-height: 24px; color: #ffd98a; margin-top: 6px; }
+  #roomcode { font-family: monospace; font-size: 28px; letter-spacing: 6px; color: #fff; background: #000; padding: 2px 10px; border-radius: 6px; }
+  #roster { margin-top: 8px; font-size: 15px; }
+  .keys { font-size: 13px; color: #b9add0; margin-top: 10px; line-height: 1.5; }
+  .keys kbd { background: #221a33; border: 1px solid #4a3d66; border-radius: 4px; padding: 0 5px; font-family: monospace; color: #fff; }
+  #wait { display: none; }
+  .keys table { margin: 6px auto 0; border-collapse: collapse; }
+  .keys td, .keys th { padding: 2px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .keys th { color: #e8c27a; font-weight: 700; }
+  input[type=radio] { width: auto; }
+</style>
+</head>
+<body>
+<div id="lobby">
+  <div class="panel">
+    <h1>Побег из Велкинвильва</h1>
+    <div class="sub">Аванпост дроу, Подземье · кооператив на 2–4 героя</div>
+    <div class="box">
+      <div class="row"><label>Имя:&nbsp;<input id="name" maxlength="14" placeholder="Имя игрока"></label></div>
+      <div class="heroes" id="heroes"></div>
+      <div id="menu">
+        <div class="row">
+          <button class="gold" id="btnHost">Создать комнату</button>
+          <span>или</span>
+          <input id="code" maxlength="5" placeholder="КОД">
+          <button id="btnJoin">Войти</button>
+          <button id="btnSolo" style="display:none">Играть одному</button>
+        </div>
+      </div>
+      <div id="wait">
+        <div class="row" id="hostInfo" style="display:none">Код комнаты: <span id="roomcode">-----</span> <button id="btnCopy">Копировать</button></div>
+        <div id="roster"></div>
+        <div class="row"><button class="gold" id="btnStart" style="display:none">Начать бой</button></div>
+      </div>
+      <div id="status"></div>
+      <div class="row" style="margin-top:10px">Раскладка:
+        <label><input type="radio" name="scheme" value="wasd"> WASD + J K L</label>
+        <label><input type="radio" name="scheme" value="arrows"> Стрелки + Z X C</label>
+      </div>
+      <div class="keys" id="keys"></div>
+    </div>
+  </div>
+</div>
+<div id="game"></div>
+
+<script src="lib/phaser.min.js"></script>
+<script src="lib/peerjs.min.js"></script>
+<script>
+  // Opened by double-click (file://): browsers block reading image files from disk, so load embedded copies.
+  if (location.protocol === 'file:') document.write('<script src="js/assetdata.js"><\/script>');
+</script>
+<script src="js/meta.js"></script>
+<script src="js/rig.js"></script>
+<script src="js/chars.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/net.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/game.js"></script>
+<script src="js/lobby.js"></script>
+</body>
+</html>
