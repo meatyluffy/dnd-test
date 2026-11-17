@@ -4,9 +4,10 @@
   const W = 640, H = 360;
   const params = new URLSearchParams(location.search);
   const COLORS = [0xffd36b, 0x6bdcff, 0xff7ad9, 0x8dff8a];
-  const FONT = '"Tiny5", monospace';
+  const FONT = '"Cyrillic Pixel-7", monospace';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const T = (sc, x, y, s, size = 12, color = '#f1e6cf', o = {}) => sc.add.text(x, y, s, Object.assign({ fontFamily: FONT, fontSize: size, color, resolution: 3, stroke: '#0a0610', strokeThickness: o.stroke !== undefined ? o.stroke : 3, wordWrap: o.wrap ? { width: o.wrap } : undefined, lineSpacing: 2 }, o.style || {}));
+  const fz = (n) => Math.max(10, Math.round(n * 1.2));
+  const T = (sc, x, y, s, size = 12, color = '#f1e6cf', o = {}) => sc.add.text(x, y, s, Object.assign({ fontFamily: FONT, fontSize: fz(size), color, resolution: 3, stroke: '#0a0610', strokeThickness: o.stroke !== undefined ? o.stroke : 3, wordWrap: o.wrap ? { width: o.wrap } : undefined, lineSpacing: 2 }, o.style || {}));
 
   // ------------------------------------------------------------ shared state
   const S = window.S = {
@@ -327,7 +328,7 @@
 
   // ------------------------------------------------------------ boot
   function boot() {
-    if (document.fonts && !boot.waited) { boot.waited = true; document.fonts.load('12px "Tiny5"', 'АБВ abc').finally(boot); return; }
+    if (document.fonts && !boot.waited) { boot.waited = true; document.fonts.load('12px "Cyrillic Pixel-7"', 'АБВ abc').finally(boot); return; }
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('game').style.display = 'block';
     new Phaser.Game({
@@ -941,10 +942,10 @@
         // HP
         g.fillStyle(0x000000, 1).fillRect(430, y + 6, 70, 4);
         g.fillStyle(u.hp / u.maxhp > 0.3 ? 0x5ad86a : 0xd84a3a, 1).fillRect(430, y + 6, 70 * u.hp / u.maxhp, 4);
-        this.texts.push(T(sc, 430, y - 3, 'ОЗ ' + u.hp, 8, '#ffffff', { stroke: 2 }).setDepth(2101));
+        this.texts.push(T(sc, 430, y - 5, 'ОЗ ' + u.hp, 8, '#ffffff', { stroke: 2 }).setDepth(2101));
         g.fillStyle(0x000000, 1).fillRect(506, y + 6, 46, 4);
         g.fillStyle(0x5aa8ff, 1).fillRect(506, y + 6, 46 * u.sp / u.maxsp, 4);
-        this.texts.push(T(sc, 506, y - 3, 'ОУ ' + u.sp, 8, '#ffffff', { stroke: 2 }).setDepth(2101));
+        this.texts.push(T(sc, 506, y - 5, 'ОУ ' + u.sp, 8, '#ffffff', { stroke: 2 }).setDepth(2101));
         // BP pips
         for (let k = 0; k < 5; k++) {
           const filled = k < u.bp;
